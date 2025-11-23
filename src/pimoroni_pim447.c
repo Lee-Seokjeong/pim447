@@ -178,48 +178,51 @@ static void pimoroni_pim447_work_handler(struct k_work *work) {
 
     /* Report movement immediately if non-zero */
     if (delta_x != 0 || delta_y != 0) {
+        // [수정 B 적용] 움직임 감지 시 즉시 automouse layer 활성화
+        activate_automouse_layer();
+
         if (current_mode == PIM447_MODE_MOUSE) {
             pim447_process_movement(data, delta_x, delta_y, time_between_interrupts, PIM447_MOUSE_MAX_SPEED, PIM447_MOUSE_MAX_TIME, PIM447_MOUSE_SMOOTHING_FACTOR); 
             
             /* Report relative X movement */
             if (delta_x != 0) {
-                ret = input_report_rel(data->dev, INPUT_REL_X, data->smoothed_x, true, K_NO_WAIT);
+                ret = input_report_rel(data->dev, INPUT_REL_X, delta_x, true, K_NO_WAIT); // [수정 A 적용] delta_x 사용
                 if (ret) {
                     LOG_ERR("Failed to report delta_x: %d", ret);
                 } else {
-                    LOG_DBG("Reported delta_x: %d", data->smoothed_x);
+                    LOG_DBG("Reported delta_x: %d", delta_x);
                 }
             }
 
             /* Report relative Y movement */
             if (delta_y != 0) {
-                ret = input_report_rel(data->dev, INPUT_REL_Y, data->smoothed_y, true, K_NO_WAIT);
+                ret = input_report_rel(data->dev, INPUT_REL_Y, delta_y, true, K_NO_WAIT); // [수정 A 적용] delta_y 사용
                 if (ret) {
                     LOG_ERR("Failed to report delta_y: %d", ret);
                 } else {
-                    LOG_DBG("Reported delta_y: %d", data->smoothed_y);
+                    LOG_DBG("Reported delta_y: %d", delta_y);
                 }
             }
         } else if (current_mode == PIM447_MODE_SCROLL) {
             pim447_process_movement(data, delta_x, delta_y, time_between_interrupts, PIM447_SCROLL_MAX_SPEED, PIM447_SCROLL_MAX_TIME, PIM447_SCROLL_SMOOTHING_FACTOR); 
             
-            /* Report relative X movement */
+            /* Report relative X movement (Wheel) */
             if (delta_x != 0) {
-                ret = input_report_rel(data->dev, INPUT_REL_WHEEL, data->smoothed_x, true, K_NO_WAIT);
+                ret = input_report_rel(data->dev, INPUT_REL_WHEEL, delta_x, true, K_NO_WAIT); // [수정 A 적용] delta_x 사용
                 if (ret) {
                     LOG_ERR("Failed to report delta_x: %d", ret);
                 } else {
-                    LOG_DBG("Reported delta_x: %d", data->smoothed_x);
+                    LOG_DBG("Reported delta_x: %d", delta_x);
                 }
             }
 
-            /* Report relative Y movement */
+            /* Report relative Y movement (HWheel) */
             if (delta_y != 0) {
-                ret = input_report_rel(data->dev, INPUT_REL_HWHEEL, data->smoothed_y, true, K_NO_WAIT);
+                ret = input_report_rel(data->dev, INPUT_REL_HWHEEL, delta_y, true, K_NO_WAIT); // [수정 A 적용] delta_y 사용
                 if (ret) {
                     LOG_ERR("Failed to report delta_y: %d", ret);
                 } else {
-                    LOG_DBG("Reported delta_y: %d", data->smoothed_y);
+                    LOG_DBG("Reported delta_y: %d", delta_y);
                 }
             }
         }
@@ -266,8 +269,7 @@ static void pimoroni_pim447_work_handler(struct k_work *work) {
 
     // Update LEDs based on movement
     if (speed > 0) {
-         activate_automouse_layer();
-
+         // activate_automouse_layer(); // [수정 B] 이 줄은 위로 이동했으므로 삭제하거나 주석 처리
             // Update hue or brightness based on speed
             data->hue += speed * PIM447_HUE_INCREMENT_FACTOR;
             if (data->hue >= 360.0f) {
@@ -299,7 +301,7 @@ static void pimoroni_pim447_gpio_callback(const struct device *port, struct gpio
     data->last_interrupt_time = current_time;
     k_mutex_unlock(&data->data_lock);
 
-    /* Schedule the work item to handle the interrupt in thread context */
+/* Schedule the work item to handle the interrupt in thread context */
     k_work_submit(&data->irq_work);
 }
 
@@ -398,6 +400,7 @@ static int pimoroni_pim447_disable(const struct device *dev) {
 
     /* Disable interrupt output on the trackball */
     ret = pimoroni_pim447_enable_interrupt(config, false);
+
     if (ret) {
         LOG_ERR("Failed to disable interrupt output");
         return ret;
