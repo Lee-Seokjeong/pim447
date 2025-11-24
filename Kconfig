@@ -21,5 +21,11 @@ if ZMK_PIMORONI_PIM447
     default y
     help
       Enable Pimoroni PIM447 Trackball behaviors.
-
+  
+# --- [여기에 새 설정 추가] ---
+  config PIMORONI_PIM447_LOG_LEVEL_DBG
+      bool "Enable debug log level for PIM447"
+      depends on LOG_DEFAULT_LEVEL_DBG
+      default y
+  # ------------------------------
 endif # ZMK_PIMORONI_PIM447
